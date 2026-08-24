@@ -1,0 +1,7 @@
+Flask>=3.0,<4
+requests>=2.31,<3
+proxmoxer>=2.0,<3
+kubernetes>=29,<36
+python-dotenv>=1.0,<2
+docker>=7.0,<8
+gunicorn>=22,<24

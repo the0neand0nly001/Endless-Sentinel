@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block body_class %}error-body{% endblock %}
+{% block content %}
+<main class="error-page">
+  <div class="error-card">
+    <span class="error-signal" aria-hidden="true"><i></i><i></i><i></i></span>
+    <p class="eyebrow">Error 404</p>
+    <h1>Signal lost.</h1>
+    <p>The route you requested is not part of this Endless Sentinel dashboard.</p>
+    <a class="scan-button" href="{{ url_for('dashboard') }}">Return to overview <span aria-hidden="true">→</span></a>
+  </div>
+</main>
+{% endblock %}

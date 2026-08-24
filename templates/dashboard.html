@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% set proxmox = state.services.proxmox %}
+{% set k3s = state.services.k3s %}
+{% set docker = state.services.docker %}
+
+{% block head %}
+  <meta name="endless-sentinel-refresh" content="{{ refresh_seconds }}">
+{% endblock %}
+
+{% block content %}
+<div class="app-shell" data-dashboard data-initial-status="{{ state.overall_status }}">
+  <a class="skip-link" href="#main-content">Skip to dashboard</a>
+
+  <header class="mobile-header">
+    <a class="brand" href="#overview" aria-label="Endless Sentinel dashboard home">
+      <span class="logo-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+      <strong>Endless Sentinel</strong>
+    </a>
+    <button class="menu-button" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="primary-sidebar" data-menu-toggle>
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+
+  <aside class="sidebar" id="primary-sidebar" data-sidebar>
+    <a class="brand desktop-brand" href="#overview">
+      <span class="logo-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+      <strong>Endless Sentinel</strong>
+    </a>
+    <nav aria-label="Primary navigation">
+      <p class="nav-label">Monitor</p>
+      <a class="active" href="#overview"><span class="nav-icon" aria-hidden="true">⌁</span>Overview</a>
+      <a href="#infrastructure"><span class="nav-icon" aria-hidden="true">◇</span>Infrastructure</a>
+      <a href="#alerts"><span class="nav-icon" aria-hidden="true">!</span>Alerts</a>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="collector-status">
+        <span class="pulse status-light-{{ state.overall_status }}" data-collector-light></span>
+        <div><strong data-collector-label>{% if state.polling %}Collector running{% elif state.updated_at %}Collector online{% else %}Collector starting{% endif %}</strong><small>{{ refresh_seconds }} second dashboard refresh</small></div>
+      </div>
+      <p>Polling every {{ state.cycle and state.cycle or 'configured' }} cycle{% if state.cycle != 1 %}s{% endif %}</p>
+    </div>
+  </aside>
+  <button class="menu-scrim" type="button" aria-label="Close navigation" data-menu-scrim hidden></button>
+
+  <main id="main-content" class="main-content">
+    <section id="overview" class="topbar">
+      <div><p class="eyebrow">Homelab operations</p><h1>Resource overview</h1></div>
+      <div class="topbar-actions">
+        <div class="sync-meta"><span>Last sync</span><strong data-updated-at>{{ state.updated_at or 'Waiting for first cycle' }}</strong></div>
+        <form method="post" action="{{ url_for('poll_action') }}" data-action-form="poll">
+          <button class="scan-button" type="submit" data-poll-button {% if state.polling %}disabled{% endif %}>
+            <span class="scan-icon{% if state.polling %} spinning{% endif %}" aria-hidden="true">↻</span>
+            <span data-poll-label>{% if state.polling %}Scanning…{% else %}Run scan{% endif %}</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <section class="summary-grid" aria-label="System summary">
+      <article class="summary-card hero-summary">
+        <div class="summary-heading"><span>Overall status</span><span class="status-pill status-{{ state.overall_status }}" data-overall-pill><i></i><span data-overall-label>{{ state.overall_status|replace('_', ' ')|title }}</span></span></div>
+        <div class="summary-value"><strong data-attention-count>{{ state.summary.active_alerts }}</strong><span data-attention-label>{% if state.summary.active_alerts == 1 %}active incident{% else %}active incidents{% endif %}</span></div>
+        <p data-overall-copy>
+          {% if state.overall_status == 'healthy' %}All configured infrastructure layers are reporting healthy.
+          {% elif state.overall_status in ['warning', 'critical'] %}Review the active alerts below for resources that need attention.
+          {% elif state.overall_status == 'initializing' %}Collectors are starting and the first telemetry cycle is in progress.
+          {% else %}Enable at least one collector to begin receiving homelab telemetry.{% endif %}
+        </p>
+      </article>
+      <article class="summary-card"><span>Compute nodes</span><strong><b data-nodes-ready>{{ state.summary.nodes_ready }}</b> <small>/ <span data-nodes-total>{{ state.summary.nodes_total }}</span></small></strong><p><i class="good-dot"></i><span data-nodes-copy>{% if state.summary.nodes_total %}{{ state.summary.nodes_total - state.summary.nodes_ready }} unavailable{% else %}No node data yet{% endif %}</span></p></article>
+      <article class="summary-card"><span>Workloads</span><strong><b data-workloads-healthy>{{ state.summary.workloads_healthy }}</b> <small>/ <span data-workloads-total>{{ state.summary.workloads_total }}</span></small></strong><p><i class="warn-dot"></i><span data-workloads-copy>{% if state.summary.workloads_total %}{{ state.summary.workloads_total - state.summary.workloads_healthy }} degraded{% else %}No workload data yet{% endif %}</span></p></article>
+      <article class="summary-card"><span>Active alerts</span><strong data-alert-count>{{ state.summary.active_alerts }}</strong><p><i class="critical-dot"></i><span data-alert-copy>{% if state.summary.active_alerts %}Sorted by severity below{% else %}No open incidents{% endif %}</span></p></article>
+    </section>
+
+    <section class="content-grid">
+      <article class="panel utilization-panel">
+        <div class="panel-heading">
+          <div><p class="eyebrow">Recent cycles</p><h2>Cluster utilization</h2></div>
+          <div class="legend"><span><i class="cpu-key"></i>CPU <b data-chart-cpu>{{ proxmox.summary.avg_cpu|round(1) }}%</b></span><span><i class="ram-key"></i>Memory <b data-chart-memory>{{ proxmox.summary.avg_memory|round(1) }}%</b></span></div>
+        </div>
+        <div class="chart" role="img" aria-label="Proxmox CPU and memory utilization history">
+          <div class="chart-grid" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+          <svg viewBox="0 0 620 180" preserveAspectRatio="none" aria-hidden="true">
+            <defs><linearGradient id="cpu-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#00b37e" stop-opacity=".24"></stop><stop offset="1" stop-color="#00b37e" stop-opacity="0"></stop></linearGradient><linearGradient id="ram-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#54d6ad" stop-opacity=".18"></stop><stop offset="1" stop-color="#54d6ad" stop-opacity="0"></stop></linearGradient></defs>
+            <path class="fill cpu-fill" data-cpu-fill d="M0 180 L620 180 L620 180 L0 180 Z"></path>
+            <path class="fill ram-fill" data-ram-fill d="M0 180 L620 180 L620 180 L0 180 Z"></path>
+            <path class="line cpu-line" data-cpu-line d="M0 180 L620 180"></path>
+            <path class="line ram-line" data-ram-line d="M0 180 L620 180"></path>
+          </svg>
+          <div class="chart-axis" data-chart-axis><span>Awaiting history</span><span>Current cycle</span></div>
+        </div>
+      </article>
+
+      <article class="panel alert-panel">
+        <div class="panel-heading"><div><p class="eyebrow">Alert pipeline</p><h2>Discord delivery</h2></div><span class="status-pill status-{{ 'healthy' if state.notifier.configured and state.notifier.status == 'ready' else 'critical' if state.notifier.status == 'error' else 'disabled' }}" data-notifier-pill><i></i><span data-notifier-label>{{ state.notifier.status|title }}</span></span></div>
+        <div class="webhook-orbit" aria-hidden="true"><span class="orbit-ring ring-one"></span><span class="orbit-ring ring-two"></span><span class="logo-mark"><span></span><span></span><span></span></span></div>
+        <p data-notifier-copy>{% if state.notifier.configured %}Threshold alerts are grouped, deduplicated, and dispatched through your configured webhook.{% else %}Add DISCORD_WEBHOOK_URL to enable threshold and recovery notifications.{% endif %}</p>
+        {% if state.notifier.configured %}
+          <form method="post" action="{{ url_for('test_alert_action') }}" data-action-form="test-alert"><button class="secondary-button" type="submit">Send test alert</button></form>
+        {% else %}
+          <a class="secondary-button" href="#configuration">Review configuration</a>
+        {% endif %}
+        <div class="delivery-meta"><span>Last delivery</span><strong data-last-delivery>{{ state.notifier.last_delivery_at or 'No deliveries yet' }}</strong></div>
+      </article>
+    </section>
+
+    <section id="infrastructure" class="section-block">
+      <div class="section-heading"><div><p class="eyebrow">Collectors</p><h2>Infrastructure layers</h2></div><span class="section-note">Proxmox · k3s · Docker</span></div>
+      <div class="platform-grid">
+        <article class="platform-card" data-platform="proxmox">
+          <div class="platform-top"><div><span class="platform-glyph glyph-proxmox" aria-hidden="true">PX</span><div><p>Virtualization</p><h3>Proxmox</h3></div></div><span class="status-pill status-{{ proxmox.status }}" data-platform-status><i></i><span>{{ proxmox.status|title }}</span></span></div>
+          <p class="platform-summary" data-platform-summary>{% if proxmox.enabled %}{{ proxmox.summary.online_nodes }} of {{ proxmox.summary.total_nodes }} nodes online{% else %}Collector disabled{% endif %}</p>
+          <div class="metric-list">
+            <div class="metric"><div><span>Cluster CPU</span><strong data-metric="cpu">{{ proxmox.summary.avg_cpu|round(1) }}%</strong></div><div class="progress-track"><span data-progress="cpu" style="width:{{ [proxmox.summary.avg_cpu, 100]|min }}%"></span></div></div>
+            <div class="metric"><div><span>Cluster memory</span><strong data-metric="memory">{{ proxmox.summary.avg_memory|round(1) }}%</strong></div><div class="progress-track"><span data-progress="memory" style="width:{{ [proxmox.summary.avg_memory, 100]|min }}%"></span></div></div>
+          </div>
+          <div class="resource-list" data-resource-list>
+            {% for node in proxmox.nodes[:4] %}<span><i class="{{ 'good-dot' if node.online else 'critical-dot' }}"></i>{{ node.name }} · {{ node.cpu_percent }}% CPU · {{ node.memory_percent }}% RAM</span>{% else %}<span>No Proxmox node telemetry received.</span>{% endfor %}
+          </div>
+          {% if proxmox.error %}<p class="inline-error" data-platform-error>{{ proxmox.error }}</p>{% endif %}
+        </article>
+
+        <article class="platform-card" data-platform="k3s">
+          <div class="platform-top"><div><span class="platform-glyph glyph-k3s" aria-hidden="true">K3</span><div><p>Orchestration</p><h3>k3s</h3></div></div><span class="status-pill status-{{ k3s.status }}" data-platform-status><i></i><span>{{ k3s.status|title }}</span></span></div>
+          <p class="platform-summary" data-platform-summary>{% if k3s.enabled %}{{ k3s.summary.healthy_pods }} of {{ k3s.summary.total_pods }} pods healthy{% else %}Collector disabled{% endif %}</p>
+          <div class="metric-list">
+            <div class="metric"><div><span>Nodes ready</span><strong data-metric="nodes">{{ k3s.summary.ready_nodes }} / {{ k3s.summary.total_nodes }}</strong></div><div class="progress-track"><span data-progress="nodes" style="width:{{ (k3s.summary.ready_nodes / k3s.summary.total_nodes * 100) if k3s.summary.total_nodes else 0 }}%"></span></div></div>
+            <div class="metric"><div><span>Pods healthy</span><strong data-metric="pods">{{ ((k3s.summary.healthy_pods / k3s.summary.total_pods * 100)|round(1)) if k3s.summary.total_pods else 0 }}%</strong></div><div class="progress-track"><span data-progress="pods" style="width:{{ (k3s.summary.healthy_pods / k3s.summary.total_pods * 100) if k3s.summary.total_pods else 0 }}%"></span></div></div>
+          </div>
+          <div class="resource-list" data-resource-list>
+            {% set unhealthy_pods = k3s.pods|selectattr('severity', 'ne', 'healthy')|list %}
+            {% for pod in unhealthy_pods[:4] %}<span><i class="{{ 'critical-dot' if pod.severity == 'critical' else 'warn-dot' }}"></i>{{ pod.namespace }}/{{ pod.name }} · {{ pod.reason or pod.phase }}</span>{% else %}<span>{% if k3s.summary.total_pods %}All observed k3s pods are healthy.{% else %}No k3s workload telemetry received.{% endif %}</span>{% endfor %}
+          </div>
+          {% if k3s.error %}<p class="inline-error" data-platform-error>{{ k3s.error }}</p>{% endif %}
+        </article>
+
+        <article class="platform-card" data-platform="docker">
+          <div class="platform-top"><div><span class="platform-glyph glyph-docker" aria-hidden="true">DK</span><div><p>Containers</p><h3>Docker</h3></div></div><span class="status-pill status-{{ docker.status }}" data-platform-status><i></i><span>{{ docker.status|title }}</span></span></div>
+          <p class="platform-summary" data-platform-summary>{% if docker.enabled %}{{ docker.summary.running_containers }} of {{ docker.summary.total_containers }} containers running{% else %}Collector disabled{% endif %}</p>
+          <div class="metric-list">
+            <div class="metric"><div><span>Memory used</span><strong data-metric="memory">{{ docker.summary.memory_bytes|human_bytes }}</strong></div><div class="progress-track"><span data-progress="memory" style="width:{{ [docker.summary.memory_percent, 100]|min }}%"></span></div></div>
+            <div class="metric"><div><span>Total restarts</span><strong data-metric="restarts">{{ docker.summary.total_restarts }}</strong></div><div class="progress-track"><span data-progress="restarts" style="width:{{ [docker.summary.total_restarts * 5, 100]|min }}%"></span></div></div>
+          </div>
+          <div class="resource-list" data-resource-list>
+            {% for container in docker.containers[:4] %}<span><i class="{{ 'good-dot' if container.healthy else 'critical-dot' }}"></i>{{ container.name }} · {{ container.status }}{% if container.health %} · {{ container.health }}{% endif %}</span>{% else %}<span>No Docker container telemetry received.</span>{% endfor %}
+          </div>
+          {% if docker.error %}<p class="inline-error" data-platform-error>{{ docker.error }}</p>{% endif %}
+        </article>
+      </div>
+    </section>
+
+    <section id="alerts" class="section-block incident-section">
+      <div class="section-heading"><div><p class="eyebrow">Needs review</p><h2>Open incidents</h2></div><span class="section-note" data-alert-sort>Sorted by severity</span></div>
+      <div class="incident-list" data-alert-list>
+        {% for alert in state.alerts %}
+          <article class="incident-row">
+            <span class="incident-level level-{{ alert.severity }}">{{ alert.severity[0]|upper }}</span>
+            <div class="incident-copy"><div><span class="status-pill status-{{ alert.severity }}"><i></i>{{ alert.source }}</span><time data-time="{{ alert.last_seen }}">{{ alert.last_seen }}</time></div><h3>{{ alert.title }}</h3><p>{{ alert.message }}</p></div>
+            <a href="#infrastructure">Review <span aria-hidden="true">→</span></a>
+          </article>
+        {% else %}
+          <div class="empty-state"><span class="empty-icon" aria-hidden="true">✓</span><div><h3>No open incidents</h3><p>New threshold, availability, health, and restart alerts will appear here.</p></div></div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section id="configuration" class="configuration-panel section-block">
+      <div><p class="eyebrow">Runtime configuration</p><h2>Collector readiness</h2><p>Sensitive connection details stay in environment variables and are never sent to the browser.</p></div>
+      <div class="config-statuses">
+        <span><i class="{{ 'good-dot' if proxmox.enabled and not proxmox.error else 'warn-dot' }}"></i>Proxmox {{ 'enabled' if proxmox.enabled else 'disabled' }}</span>
+        <span><i class="{{ 'good-dot' if k3s.enabled and not k3s.error else 'warn-dot' }}"></i>k3s {{ 'enabled' if k3s.enabled else 'disabled' }}</span>
+        <span><i class="{{ 'good-dot' if docker.enabled and not docker.error else 'warn-dot' }}"></i>Docker {{ 'enabled' if docker.enabled else 'disabled' }}</span>
+        <span><i class="{{ 'good-dot' if state.notifier.configured else 'warn-dot' }}"></i>Discord {{ 'connected' if state.notifier.configured else 'disabled' }}</span>
+      </div>
+    </section>
+
+    <footer>
+      <a class="brand" href="#overview"><span class="logo-mark" aria-hidden="true"><span></span><span></span><span></span></span><strong>Endless Sentinel</strong></a>
+      <p>Unified homelab observability for Proxmox, k3s, and Docker.</p>
+      <nav aria-label="Footer navigation"><a href="#overview">Overview</a><a href="#infrastructure">Infrastructure</a><a href="#alerts">Alerts</a><a href="{{ url_for('health') }}">Health API</a></nav>
+    </footer>
+  </main>
+
+  <div class="toast-stack" aria-live="polite" aria-atomic="true" data-toast-stack></div>
+</div>
+{% endblock %}
+
+{% block scripts %}<script src="{{ url_for('static', filename='dashboard.js') }}" defer></script>{% endblock %}
