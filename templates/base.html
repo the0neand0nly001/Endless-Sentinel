@@ -1,32 +1,5 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{{ page_title }}</title>
-  <meta name="description" content="{{ meta_description }}">
-  <meta name="application-name" content="Endless Sentinel">
-  <meta name="theme-color" content="#171719">
-  <meta name="color-scheme" content="dark">
-  <link id="dynamic-favicon" rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
-  {% block head %}{% endblock %}
-</head>
-<body class="{% block body_class %}{% endblock %}">
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <div class="flash-stack" aria-live="polite">
-        {% for category, message in messages %}
-          <div class="flash flash-{{ category }}" role="status">
-            <span aria-hidden="true">{% if category == 'success' %}✓{% elif category == 'warning' %}!{% else %}×{% endif %}</span>
-            <p>{{ message }}</p>
-            <button type="button" data-dismiss-flash aria-label="Dismiss message">×</button>
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-  {% endwith %}
-  {% block content %}{% endblock %}
-  {% block scripts %}{% endblock %}
-</body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ title }}</title><meta name="description" content="{{ description }}"><link rel="icon" href="{{ url_for('static',filename='favicon.svg') }}" type="image/svg+xml"><link rel="stylesheet" href="{{ url_for('static',filename='css/style.css') }}"><script defer src="{{ url_for('static',filename='js/app.js') }}"></script></head>
+<body data-authenticated="{{ 'true' if current_user.is_authenticated else 'false' }}">
+{% if current_user.is_authenticated %}<header class="topbar"><a class="brand" href="{{ url_for('dashboard') }}" aria-label="Endless Sentinel dashboard"><img src="{{ url_for('static',filename='favicon.svg') }}" alt="" width="34" height="34"><span>Endless Sentinel</span></a><button class="menu-button" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Open navigation"><span></span><span></span><span></span></button><nav id="main-nav" class="nav" aria-label="Primary"><a href="{{ url_for('dashboard') }}" {% if request.endpoint=='dashboard' %}aria-current="page"{% endif %}>Overview</a><a href="{{ url_for('infrastructure') }}" {% if request.endpoint=='infrastructure' %}aria-current="page"{% endif %}>Infrastructure</a><a href="{{ url_for('alerts') }}" {% if request.endpoint=='alerts' %}aria-current="page"{% endif %}>Alerts</a><a href="{{ url_for('settings') }}" {% if request.endpoint=='settings' %}aria-current="page"{% endif %}>Setup</a><form action="{{ url_for('logout') }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="link-button" type="submit">Sign out</button></form></nav></header>{% endif %}
+<main class="page {% if not current_user.is_authenticated %}auth-page{% endif %}" id="main-content"><div id="toasts" class="toasts" aria-live="polite" aria-atomic="true">{% with messages=get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<div class="toast toast-{{ category }}" role="status">{{ message }}<button type="button" aria-label="Dismiss notification">×</button></div>{% endfor %}{% endwith %}</div>{% block content %}{% endblock %}</main>
+{% if current_user.is_authenticated %}<footer><span>Endless Sentinel</span><a href="{{ url_for('healthz') }}">Health check</a></footer>{% endif %}</body></html>

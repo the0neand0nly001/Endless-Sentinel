@@ -1,13 +1,1 @@
-{% extends "base.html" %}
-{% block body_class %}error-body{% endblock %}
-{% block content %}
-<main class="error-page">
-  <div class="error-card">
-    <span class="error-signal warning-signal" aria-hidden="true"><i></i><i></i><i></i></span>
-    <p class="eyebrow">Service error</p>
-    <h1>Telemetry interrupted.</h1>
-    <p>The dashboard hit a temporary error. The background collectors will keep retrying safely.</p>
-    <a class="scan-button" href="{{ url_for('dashboard') }}">Reload dashboard <span aria-hidden="true">↻</span></a>
-  </div>
-</main>
-{% endblock %}
+{% extends 'base.html' %}{% block content %}<section class="error-page"><p class="error-code">500</p><h1>The sentinel hit an internal fault.</h1><p class="muted">The service is still running. Check the application logs for the recorded error.</p><a class="primary" href="{{ url_for('dashboard') if current_user.is_authenticated else url_for('login') }}">Return safely</a></section>{% endblock %}

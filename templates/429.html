@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<section class="error-page"><p class="error-code">429</p><h1>Too many sign-in attempts.</h1><p class="muted">{{ retry_after }} No password or sensitive login data was recorded.</p><a class="primary" href="{{ url_for('login') }}">Return to sign in</a></section>{% endblock %}
