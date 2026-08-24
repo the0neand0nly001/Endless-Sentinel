@@ -7,7 +7,7 @@
 # monitoring settings, build the application, and wait for its health check.
 set -Eeuo pipefail
 
-REPOSITORY_URL="${ENDLESS_SENTINEL_REPOSITORY_URL:-https://github.com/the0neand0nly/Endless-Sentinal.git}"
+REPOSITORY_URL="${ENDLESS_SENTINEL_REPOSITORY_URL:-https://github.com/the0neand0nly/Endless-Sentinel.git}"
 REPOSITORY_BRANCH="${ENDLESS_SENTINEL_BRANCH:-main}"
 
 DEFAULT_INSTALL_DIR="${PWD}/Endless-Sentinel"
